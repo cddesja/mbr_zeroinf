@@ -121,7 +121,7 @@ for(i in 1:6){
   lengths <- rbind(lengths,as.data.frame(etas_ci_l[[i]]))
 }
 
-write(print(xtable(lengths), type = "html"), file = "ci.html")
+write(print(xtable(lengths, digits = 4), type = "html"), file = "ci.html")
 
 #
 # Confidence Interval Coverage
@@ -148,7 +148,7 @@ for(i in 1:6){
   coverage <- rbind(coverage,as.data.frame(etas_ci_c[[i]]))
 }
 
-write(print(xtable(coverage), type = "html"), file = "coverage.html")
+write(print(xtable(coverage, digits = 4), type = "html"), file = "coverage.html")
 
 #
 # Structural Zeros
@@ -183,6 +183,142 @@ gamma1 = rep(c(rep(0,2),rep(-.5,2)),12)
 
 s.zeros = data.frame(zeros,N,col,theta,beta1,gamma1)
 
+# Structural Zeros ANOVA
+prop_aov <- aov(zeros ~ col*theta*beta1*gamma1*N,s.zeros)
+step_prop <- step(prop_aov, k = log(144))
+eta_prop <- etaSquared(step_prop, anova=TRUE)
 
+write(print(xtable(eta_prop, digits = 4), type = "html", digits = 5), file = "eta_prop.html")
+
+#
+# Type I Error
+#
+
+## Type I error
+## ZINB ##
+setwd("/Users/chris/Dropbox/um/phd/analysis/Simulation/zinbmodels/typeI")
+zinb.gamma1 = list()
+for(j in 1:2){
+  for(k in 1:6){
+    l = 1
+    for(m in 1:2){
+      fsumstat=paste("zinbTypeIG1-",j,k,l,m,".rdata", sep="")
+      load(fsumstat)
+      alpha = c(.01,.05,.1)
+      typeI = matrix(ncol=3,nrow=length(alpha))
+      p.valuesNBH = NULL
+      for(n in 1:3){
+        for(i in 1:length(alpha)){
+          p.valuesNBH[i]=sum(Pvalues[[n]]<alpha[i])/length(Pvalues[[n]])
+        }
+        typeI[,n] = p.valuesNBH
+      }
+      zinb.gamma1[[paste(j,k,l,m)]] <- typeI	
+    }
+  }
+}
+
+zinb.beta1 = list()
+m = 1
+for(j in 1:2){
+  for(k in 1:6){
+    for(l in 1:2){
+      fsumstat=paste("zinbTypeIB1-",j,k,l,m,".rdata", sep="")
+      load(fsumstat)
+      alpha = c(.01,.05,.1)
+      typeI = matrix(ncol=3,nrow=length(alpha))
+      p.valuesNBH = NULL
+      for(n in 1:3){
+        for(i in 1:length(alpha)){
+          p.valuesNBH[i]=sum(Pvalues[[n]]<alpha[i])/length(Pvalues[[n]])
+        }
+        typeI[,n] = p.valuesNBH
+      }
+      zinb.beta1[[paste(j,k,l,m)]] <- typeI
+    }
+  }
+}
+
+## NBH ##
+setwd("/Users/chris/Dropbox/um/phd/analysis/Simulation/nbhmodels/typeI")
+nbh.gamma1 = list()
+for(j in 1:2){
+  for(k in 1:6){
+    l = 1
+    for(m in 1:2){
+      fsumstat=paste("nbhTypeIG1-",j,k,l,m,".rdata", sep="")
+      load(fsumstat)
+      alpha = c(.01,.05,.1)
+      typeI = matrix(ncol=3,nrow=length(alpha))
+      p.valuesNBH = NULL
+      for(n in 1:3){
+        for(i in 1:length(alpha)){
+          p.valuesNBH[i]=sum(Pvalues[[n]]<alpha[i])/length(Pvalues[[n]])
+        }
+        typeI[,n] = p.valuesNBH
+      }
+      nbh.gamma1[[paste(j,k,l,m)]] <- typeI	
+    }
+  }
+}
+
+nbh.beta1 = list()
+m = 1
+for(j in 1:2){
+  for(k in 1:6){
+    for(l in 1:2){
+      fsumstat=paste("nbhTypeIB1-",j,k,l,m,".rdata", sep="")
+      load(fsumstat)
+      alpha = c(.01,.05,.1)
+      typeI = matrix(ncol=3,nrow=length(alpha))
+      p.valuesNBH = NULL
+      for(n in 1:3){
+        for(i in 1:length(alpha)){
+          p.valuesNBH[i]=sum(Pvalues[[n]]<alpha[i])/length(Pvalues[[n]])
+        }
+        typeI[,n] = p.valuesNBH
+      }
+      nbh.beta1[[paste(j,k,l,m)]] <- typeI
+    }
+  }
+}
+
+ng.05 = matrix(nrow=24,ncol=3)
+nb.05 = matrix(nrow=24,ncol=3)
+zg.05 = matrix(nrow=24,ncol=3)
+zb.05 = matrix(nrow=24,ncol=3)
+
+for(i in 1:24){  
+  ng.05[i,] = nbh.gamma1[[i]][2,]
+  nb.05[i,] = nbh.beta1[[i]][2,]
+  zg.05[i,] = zinb.gamma1[[i]][2,]
+  zb.05[i,] = zinb.beta1[[i]][2,]
+  }
+
+ng.long <- c(ng.05[,1],ng.05[,2],ng.05[,3])
+zg.long <- c(zg.05[,1],zg.05[,2],zg.05[,3])
+
+nb.long <- c(nb.05[,1],nb.05[,2],nb.05[,3])
+zb.long <- c(zb.05[,1],zb.05[,2],zb.05[,3])
+sampsiz <- c(rep(100,24),rep(250,24),rep(500,24))
+theta <- rep(c(rep(1/4,2),rep(1/2,2),rep(1,2),rep(2,2),rep(5,2),rep(10,2)),6)
+col <- rep(c(rep(0,12),rep(.3,12)),3)
+model <- rep(c("NBH", "ZINB"), each = 72)
+param <- rep(c("gamma","beta"), each = 144)
+beta <- data.frame(typei = c(nb.long,zb.long),model,sampsiz,theta,col)
+gamma <- data.frame(typei = c(ng.long,zg.long),model,sampsiz,theta,col)
+
+# beta
+type1_beta <- aov(typei ~ model*sampsiz*theta*col, beta)
+step_beta <- step(type1_beta, k = log(144))
+eta_beta <- etaSquared(step_beta, anova=TRUE)
+
+# gamma
+type1_gamma <- aov(typei ~ model*sampsiz*theta*col, gamma)
+step_gamma <- step(type1_gamma, k = log(144))
+eta_gamma <- etaSquared(step_gamma, anova=TRUE)
+
+type1 <- rbind(eta_beta, eta_gamma)
+write(print(xtable(type1, digits = 4), type = "html", digits = 5), file = "type1.html")
 
 
